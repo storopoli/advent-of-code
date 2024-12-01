@@ -1,6 +1,6 @@
 # 🦌🎅🏻⛄🎁 *Advent of Code* (AoC) ☃️❄️🤶🎄
 
-- [ ] AoC '24 in Haskell (not out yet)
+- [ ] AoC '24 in Haskell (in progress)
 - [ ] AoC '25 (yet to come)
 
 ## About *Advent of Code*
