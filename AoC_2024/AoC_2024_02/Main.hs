@@ -33,5 +33,28 @@ part1 :: IO ()
 part1 = readFile "input.txt" >>= \input ->
    print $ length $ filter isSafe $ map parseLine $ lines input
 
+-- Part 2
+
+-- We need to add a tolerance for one pair being off by 3 or equal.
+
+-- |Drops each element from the list, one at a time.
+dropEach :: [a] -> [[a]]
+dropEach [] = []
+dropEach xs = [take i xs ++ drop (i + 1) xs | i <- [0 .. length xs - 1]]
+
+-- |Checks if a sequence is "safe" and monotonic, possibly after removing one element.
+isSafe2 :: [Int] -> Bool
+isSafe2 xs
+    -- If the sequence is safe and monotonic, return True.
+    | isSafe xs && isMonotonic xs = True
+    -- Otherwise, check if any of the sequences obtained by dropping one element at a time
+    -- is safe.
+    | otherwise = any isSafe (dropEach xs)
+
+part2 :: IO ()
+part2 = readFile "input.txt" >>= \input ->
+   print $ length $ filter isSafe2 $ map parseLine $ lines input
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
