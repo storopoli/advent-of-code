@@ -22,3 +22,9 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+
+### AoC ###
+expected.txt
+test_input.txt
+input.txt
+Main

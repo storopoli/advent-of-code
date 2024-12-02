@@ -12,7 +12,7 @@ quicksort (p:xs) = quicksort lesser ++ [p] ++ quicksort greater
         lesser = filter (< p) xs -- filter elements less than the pivot
         greater = filter (>= p) xs -- filter elements greater than or equal to the pivot
 
-part1 :: IO()
+part1 :: IO ()
 part1 = readFile "input.txt" >>= \file -> 
     let pairs = map words $ lines file -- split on spaces
         -- sort the numbers
@@ -39,7 +39,7 @@ getNumberScore rightNums num = num * count num rightNums
 similarityScore :: [Int] -> [Int] -> Int
 similarityScore leftNums rightNums = sum $ map (getNumberScore rightNums) leftNums
 
-part2 :: IO()
+part2 :: IO ()
 part2 = readFile "input.txt" >>= \file -> 
     let pairs = map words $ lines file -- split on spaces
         -- sort the numbers
@@ -48,6 +48,6 @@ part2 = readFile "input.txt" >>= \file ->
     -- calculate the similarity score
     in print $ similarityScore leftNums rightNums
 
-main :: IO()
+main :: IO ()
 -- main = part1
 main = part2
