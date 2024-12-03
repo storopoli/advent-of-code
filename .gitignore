@@ -24,7 +24,7 @@ cabal.project.local~
 .ghc.environment.*
 
 ### AoC ###
-expected.txt
-test_input.txt
-input.txt
-Main
+**/expected.txt
+**/test_input.txt
+**/input.txt
+**/Main
