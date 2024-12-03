@@ -5,6 +5,8 @@ module Main where
 -- it is more correct than the system regex library.
 import Text.Regex.TDFA
 import Text.Regex.TDFA.Text ()
+import Data.List (isPrefixOf)
+import Data.Maybe (mapMaybe)
 
 -- Part 1
 
@@ -44,5 +46,71 @@ part1 :: IO ()
 part1 = readFile "input.txt" >>= \input ->
     print $ sum . map (accumulate . parseLine) . lines $ input
 
+-- Part 2
+-- This is annyoing the easy way is to create a State type that has 
+-- an accumulator that can be incremented IF mul is enabled.
+
+-- NOTE: This could be optimized by making the State a Monad and using the
+-- Reader Monad to pass the state around.
+-- But this is good enough for now.
+
+-- |State for processing multiplications
+data State = State {
+    accumulator :: Int,
+    -- ^ The current value of the accumulator
+    mulEnabled :: Bool
+    -- ^ Whether multiplications are enabled
+} deriving (Show)
+
+
+-- |Instruction for processing multiplications
+data Instruction
+    = Do
+    -- ^ Enable multiplications
+    | Dont
+    -- ^ Disable multiplications
+    | Mul Int Int
+    -- ^ Multiply the two numbers
+    deriving (Show)
+
+-- |Parses a single instruction from a string
+parseInstruction :: String -> Maybe Instruction
+parseInstruction str
+    | str == "do()"    = Just Do
+    | str == "don't()" = Just Dont
+    | "mul(" `isPrefixOf` str = case str =~ "mul\\(([0-9]+),([0-9]+)\\)" :: (String, String, String, [String]) of
+        (_, _, _, [x, y]) -> Just $ Mul (read x) (read y)
+        _ -> Nothing
+    | otherwise = Nothing
+
+-- |Processes a single instruction
+processInstruction :: State -> Instruction -> State
+processInstruction state Do = state { mulEnabled = True }
+processInstruction state Dont = state { mulEnabled = False }
+processInstruction state (Mul x y)
+    | mulEnabled state = state { accumulator = accumulator state + x * y }
+    | otherwise = state
+
+
+-- |Processes a list of instructions
+processInstructions :: [Instruction] -> State -> State
+processInstructions instructions state = foldl processInstruction state instructions
+
+
+-- |Splits a string into substrings that contain instructions
+splitInstructions :: String -> [String]
+splitInstructions str = getAllTextMatches (str =~ instructionRegex)
+    where
+        instructionRegex = "(mul\\([0-9]+,[0-9]+\\)|do\\(\\)|don't\\(\\))"
+
+-- |Processes a line of input
+processLine :: String -> State -> State
+processLine line = processInstructions (mapMaybe parseInstruction (splitInstructions line))
+
+part2 :: IO ()
+part2 = readFile "input.txt" >>= \input ->
+    print $ accumulator $ processLine input (State 0 True) -- start with 0 and enabled
+
 main :: IO()
-main = part1
+-- main = part1
+main = part2
