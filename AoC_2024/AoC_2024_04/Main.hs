@@ -84,6 +84,58 @@ part1 = do
     let result = length $ filter pred allSeqs
     print result
 
+-- Part 2
+
+-- |Parses the input grid into a list of lists of characters.
+parseInput2 :: String -> [[Char]]
+parseInput2 = lines
+
+-- |Checks if the positions are within the bounds of the grid.
+inBounds :: [[a]] -> (Int, Int) -> Bool
+inBounds grid (i, j) =
+    let h = length grid
+        w = length (head grid)
+    in i >= 0 && i < h && j >= 0 && j < w
+
+-- |Retrieves the letters at specified positions.
+getLetters :: [[Char]] -> [(Int, Int)] -> Maybe String
+getLetters grid positions =
+    if all (inBounds grid) positions
+        then Just [grid !! i !! j | (i, j) <- positions]
+        else Nothing
+
+-- |Checks if a sequence matches "MAS" or "SAM".
+matchesMAS :: String -> Bool
+matchesMAS seq = seq == "MAS" || seq == "SAM"
+
+-- |Checks if an X-MAS is formed at position (i, j).
+isXMAS :: [[Char]] -> Int -> Int -> Bool
+isXMAS grid i j =
+    let
+        -- Diagonal positions
+        diag1 = [(i - 1, j - 1), (i, j), (i + 1, j + 1)] -- Top-left to Bottom-right
+        diag2 = [(i - 1, j + 1), (i, j), (i + 1, j - 1)] -- Top-right to Bottom-left
+    in
+        case (getLetters grid diag1, getLetters grid diag2) of
+            (Just d1, Just d2) -> matchesMAS d1 && matchesMAS d2
+            _                  -> False
+
+-- |Counts the number of X-MAS instances in the grid.
+countXMAS :: [[Char]] -> Int
+countXMAS grid =
+    let h = length grid
+        w = length (head grid)
+        positions = [ (i, j) | i <- [1 .. h - 2], j <- [1 .. w - 2] ]
+    in length $ filter (uncurry (isXMAS grid)) positions
+
+-- |Main function to read the input and compute the result.
+part2 :: IO ()
+part2 = do
+    input <- parseInput2 <$> readFile "input.txt"
+    let result = countXMAS input
+    print result
+
 
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
