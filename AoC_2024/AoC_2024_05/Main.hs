@@ -7,6 +7,7 @@ import qualified Data.Text.Read as TR
 import Data.Text (lines, tails, unpack, Text)
 import Data.List (sort, elemIndex)
 import Data.Maybe (fromMaybe)
+import qualified Data.Graph as Graph
 
 
 -- Part 1
@@ -79,5 +80,42 @@ part1 = do
     let middlePages = map middlePage validUpdates
     print $ sum middlePages
 
+-- |Part 2
+
+-- |Corrects an update using a topological sort
+--
+-- For each incorrectly-ordered update, use the precedence rules to determine the correct order.
+-- This can be achieved via a topological sort:
+-- 
+-- - Treat the precedence rules as a directed graph where each page points to the pages it must precede.
+-- - Perform a topological sort on the subset of pages in the update.
+correctUpdate :: Update -> PrecedenceMap -> Update
+correctUpdate update precedenceMap =
+    map (vertexToPage Map.!) sortedVertices
+  where
+    relevantRules = [(a, b) |
+        (a, bs) <- Map.toList precedenceMap,
+        a `elem` update,
+        b <- bs,
+        b `elem` update]
+    vertices = zip update [0..]
+    pageToVertex = Map.fromList vertices
+    vertexToPage = Map.fromList [(v, p) | (p, v) <- vertices]
+    edges = [(pageToVertex Map.! a, pageToVertex Map.! b) | (a, b) <- relevantRules]
+    sortedVertices = Graph.topSort $ Graph.buildG (0, length update - 1) edges
+
+part2 :: IO ()
+part2 = do
+    input <- T.lines <$> TIO.readFile "input.txt"
+    let (before, after) = filter (not . T.null) <$> splitInput input
+    let precedenceMap = parsePrecedences (map parsePair before)
+    let updates = parseUpdates after
+    let incorrectUpdates = filter (not . (`validateUpdate` precedenceMap)) updates
+    let correctedUpdates = map (`correctUpdate` precedenceMap) incorrectUpdates
+    let middlePages = map middlePage correctedUpdates
+    -- print middlePages -- Debugging
+    print $ sum middlePages
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
