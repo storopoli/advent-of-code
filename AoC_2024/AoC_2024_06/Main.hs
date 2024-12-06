@@ -3,6 +3,10 @@ module Main where
 -- Part 1
 
 import Data.List (nub)
+import Control.Monad.ST
+import Data.Array.ST
+import Data.Array (bounds)
+
 
 data Dir = U | R | D | L deriving (Show, Eq)
 
@@ -82,5 +86,76 @@ part1 = do
     let visited = simulate grid startState
     print (length (nub visited))
 
+-- Part 2
+
+-- Convert direction to an Int for indexing
+dirToInt :: Dir -> Int
+dirToInt U = 0
+dirToInt R = 1
+dirToInt D = 2
+dirToInt L = 3
+
+gridChar :: [String] -> (Int,Int) -> Char
+gridChar g (r,c) = (g !! r) !! c
+
+possibleObstructionPositions :: [String] -> (Int,Int) -> [(Int,Int)]
+possibleObstructionPositions grid (sr,sc) =
+    [ (r,c)
+    | r <- [0..length grid - 1]
+    , c <- [0..length (head grid) - 1]
+    , not (r == sr && c == sc)
+    , gridChar grid (r,c) /= '#'
+    ]
+
+placeObstacle :: [String] -> (Int,Int) -> [String]
+placeObstacle grid (r,c) =
+    let row = grid !! r
+        newRow = take c row ++ "#" ++ drop (c+1) row
+    in take r grid ++ [newRow] ++ drop (r+1) grid
+
+simulateWithLoop :: [String] -> (Int,Int) -> Dir -> Bool
+simulateWithLoop grid startPos startDir = runST $ do
+    let h = length grid
+        w = length (head grid)
+        -- Each state is (r, c, dir)
+        -- Encode this as: index = dirToInt(dir) * (h*w) + r*w + c
+        idx (r,c,dir) = dirToInt dir * (h*w) + r*w + c
+
+    visitedStates <- newArray (0, (4*h*w)-1) False :: ST s (STArray s Int Bool)
+
+    let step (r,c) dir = do
+          if outOfBounds grid (r,c)
+             then return False
+             else do
+               let i = idx (r,c,dir)
+               visited <- readArray visitedStates i
+               if visited
+                  then return True  -- loop detected
+                  else do
+                    writeArray visitedStates i True
+                    let (dr,dc) = delta dir
+                        frontPos = (r+dr, c+dc)
+                    if isObstacle grid frontPos
+                       then step (r,c) (turnRight dir) -- turn right in place
+                       else 
+                         if outOfBounds grid frontPos
+                            then return False -- guard leaves map
+                            else step frontPos dir
+
+    step startPos startDir
+
+causesLoop :: [String] -> (Int,Int,Dir) -> (Int,Int) -> Bool
+causesLoop grid (sr,sc,sd) pos =
+    simulateWithLoop (placeObstacle grid pos) (sr,sc) sd
+
+part2 :: IO ()
+part2 = do
+    input <- lines <$> readFile "input.txt"
+    let (grid, (sr,sc,sd)) = parseInput input
+        candidates = possibleObstructionPositions grid (sr,sc)
+        loopPositions = [pos | pos <- candidates, causesLoop grid (sr,sc,sd) pos]
+    print (length loopPositions)
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2 -- Oh boy, this takes a LOT of time to run. WARNING!
