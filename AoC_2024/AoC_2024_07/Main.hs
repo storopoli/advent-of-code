@@ -44,5 +44,35 @@ part1 = do
   let validResults = map fst validEquations
   print $ sum validResults
 
+-- Part 2
+data Operator2 = Add2 | Multiply2 | Concat deriving (Show, Eq)
+
+applyOperators2 :: [Operator2] -> [Operand] -> Operand
+applyOperators2 ops (x : xs) = foldl (\acc (op, y) -> applyOperator2 op acc y) x (zip ops xs)
+applyOperators2 _ _ = 0
+
+applyOperator2 :: Operator2 -> Operand -> Operand -> Operand
+applyOperator2 Add2 = (+)
+applyOperator2 Multiply2 = (*)
+applyOperator2 Concat = \x y -> read (show x <> show y)
+
+allOperatorCombinations2 :: Int -> [[Operator2]]
+allOperatorCombinations2 n = replicateM n [Add2, Multiply2, Concat]
+
+-- Boom! All possible combinations of `[Operand]` and `[Operator]` in a `Equation` that matches the `Output`
+isValidEquation2 :: Equation -> Bool
+isValidEquation2 (output, operands) =
+  any
+    (\ops -> applyOperators2 ops operands == output)
+    (allOperatorCombinations2 (length operands - 1))
+
+part2 :: IO ()
+part2 = do
+  input <- map parseEquation . lines <$> readFile "input.txt"
+  let validEquations = filter isValidEquation2 input
+  let validResults = map fst validEquations
+  print $ sum validResults
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
