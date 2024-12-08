@@ -2,7 +2,7 @@
 
 module Main where
 
-import Data.List (nub)
+import Data.List (nub, tails)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text qualified as T
@@ -105,5 +105,44 @@ part1 = do
   let uniqueAntinodes = nub antinodes
   print (length uniqueAntinodes)
 
+-- Part 2
+
+antinodeList2 :: Char -> Area -> StationMap -> [Position]
+antinodeList2 c area stations = case Map.lookup c stations of
+  Nothing -> []
+  Just positions ->
+    let pairs = [(p1, p2) | (p1 : rest) <- tails positions, p2 <- rest]
+        linesFromPairs = concatMap (linePointsFromPair area) pairs
+     in linesFromPairs
+
+linePointsFromPair :: Area -> (Position, Position) -> [Position]
+linePointsFromPair area (p1@(x1, y1), p2@(x2, y2))
+  | p1 == p2 = [] -- no line from identical points
+  | otherwise =
+      let dx = x2 - x1
+          dy = y2 - y1
+          g = gcd dx dy
+          sx = dx `div` g
+          sy = dy `div` g
+          forward = generateInDirection p1 (sx, sy) area
+          backward = generateInDirection p1 (-sx, -sy) area
+       in nub (p1 : forward ++ backward) -- Include p1 itself
+
+generateInDirection :: Position -> (Int, Int) -> Area -> [Position]
+generateInDirection (x, y) (dx, dy) area =
+  takeWhile (inBounds area) $ tail $ iterate (\(x', y') -> (x' + dx, y' + dy)) (x, y)
+
+part2 :: IO ()
+part2 = do
+  input <- T.lines <$> TIO.readFile "input.txt"
+  let width = T.length (head input)
+  let height = length input
+  let size = (width - 1, height - 1)
+  let stations = stationsToMap (concat (zipWith parseLine [0 ..] input))
+  let antinodes = concatMap (\c -> antinodeList2 c size stations) (Map.keys stations)
+  let uniqueAntinodes = nub antinodes
+  print (length uniqueAntinodes)
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
