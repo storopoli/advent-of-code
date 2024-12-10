@@ -3,9 +3,12 @@
 module Main where
 
 import Control.Monad (guard)
+import Control.Monad.State (State, evalState, gets, modify)
 import Data.Array (Array, assocs, bounds, listArray, (!))
 import Data.Char (digitToInt)
 import Data.List (nub)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -43,6 +46,8 @@ neighbors grid (r, c) = do
   guard (inBounds grid newPos)
   pure newPos
 
+-- Part 1
+
 -- | DFS to find all reachable `9`s starting from a trailhead.
 findReachableNines :: Grid -> (Int, Int) -> Set (Int, Int)
 findReachableNines grid start = dfs Set.empty [start]
@@ -72,5 +77,37 @@ part1 = do
       totalScore = sum scores
   print totalScore
 
+-- Part 2
+
+-- | Count distinct paths to a height of 9 using DFS with memoization.
+countPaths :: Grid -> (Int, Int) -> State (Map (Int, Int) Int) Int
+countPaths grid pos
+  | grid ! pos == 9 = return 1
+  | otherwise = do
+      memo <- gets (Map.lookup pos)
+      case memo of
+        Just result -> return result
+        Nothing -> do
+          let currentHeight = grid ! pos
+              nextPositions = [n | n <- neighbors grid pos, grid ! n == currentHeight + 1]
+          result <- sum <$> mapM (countPaths grid) nextPositions
+          modify (Map.insert pos result)
+          return result
+
+-- | Calculate the rating of a single trailhead by counting distinct hiking trails.
+trailheadRating :: Grid -> (Int, Int) -> Int
+trailheadRating grid trailhead = evalState (countPaths grid trailhead) Map.empty
+
+-- | Solve Part 2: Calculate the sum of all trailhead ratings.
+part2 :: IO ()
+part2 = do
+  input <- T.lines <$> TIO.readFile "input.txt"
+  let grid = parseGrid input
+      trailheads = findTrailheads grid
+      ratings = map (trailheadRating grid) trailheads
+      totalRating = sum ratings
+  print totalRating
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
