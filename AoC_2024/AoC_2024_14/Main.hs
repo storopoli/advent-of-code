@@ -2,6 +2,7 @@
 
 module Main where
 
+import Control.Monad.State
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
@@ -31,90 +32,78 @@ type Robot = (Position, Velocity)
 -- - 101x103 for `input.txt`
 type Grid = (Int, Int)
 
--- | Quadrant of the grid.
-type Quadrant = (Grid, Grid, Grid, Grid)
+-- | GridState Monad for handling grid operations
+newtype GridState a = GridState {runGridState :: State Grid a}
+  deriving (Functor, Applicative, Monad, MonadState Grid)
 
--- | Breaks a `Grid` into four `Quadrant`s by dividing width and height into equidistant parts.
---
--- The middle line is discarded, splitting the grid into four separate sections:
---
--- - Northwest (top-left)
--- - Northeast (top-right)
--- - Southwest (bottom-left)
--- - Southeast (bottom-right)
-breakGrid :: Grid -> Quadrant
-breakGrid (width, height) =
-  let halfWidth = width `div` 2
-      halfHeight = height `div` 2
-      nw = (halfWidth, halfHeight)
-      ne = (width - halfWidth, halfHeight)
-      sw = (halfWidth, height - halfHeight)
-      se = (width - halfWidth, height - halfHeight)
-   in (nw, ne, sw, se)
+-- | Execute a GridState computation with an initial grid
+runGrid :: GridState a -> Grid -> a
+runGrid gs = evalState (runGridState gs)
 
--- | Teleports a Robot if movement out of bounds is detected.
-teleport :: Grid -> Position -> Position
-teleport (width, height) (Position x y) =
-  Position (x `mod` width) (y `mod` height)
+-- | Teleport computation in GridState
+teleport :: Position -> GridState Position
+teleport (Position x y) = do
+  (width, height) <- get
+  return $ Position (x `mod` width) (y `mod` height)
 
--- | Simulates a `Grid` for a given Robot `Position` and `Velocity`.
---
--- `teleport` is used to wrap around the edges of the grid.
-simulate :: Grid -> Position -> Velocity -> Position
-simulate (width, height) (Position x y) (Position vx vy) =
+-- | Simulate single step in GridState
+simulateStep :: Robot -> GridState Robot
+simulateStep (Position x y, vel@(Position vx vy)) = do
+  (width, height) <- get
   let x' = x + vx
       y' = y + vy
-   in if x' < 0 || x' >= width || y' < 0 || y' >= height
-        then teleport (width, height) (Position x' y')
-        else Position x' y'
+  newPos <-
+    if x' < 0 || x' >= width || y' < 0 || y' >= height
+      then teleport (Position x' y')
+      else return (Position x' y')
+  return (newPos, vel)
 
--- | Simulates a `Grid` for a list of `Robot`s for a given number of time steps.
-simulateGrid :: Grid -> [Robot] -> Int -> [Robot]
-simulateGrid grid robots steps =
-  let newPositions = map (\(pos, vel) -> (simulate grid pos vel, vel)) robots
-   in if steps == 0
-        then robots
-        else simulateGrid grid newPositions (steps - 1)
+-- | Simulate multiple steps in GridState
+simulateSteps :: Int -> [Robot] -> GridState [Robot]
+simulateSteps 0 robots = return robots
+simulateSteps n robots = do
+  newRobots <- mapM simulateStep robots
+  simulateSteps (n - 1) newRobots
 
--- | Determines if a `Robot` is in a given `Quadrant`.
-inQuadrant :: Grid -> Robot -> Bool
-inQuadrant (width, height) (Position px py, _) =
-  px < width && px > 0 && py < height && py > 0
-
--- | Counts the number of robots in each Quadrant and multiplies them together.
-safetyFactor :: Grid -> [Robot] -> Int
-safetyFactor (width, height) robots =
+-- | Count robots in quadrants using GridState
+countQuadrants :: [Robot] -> GridState Int
+countQuadrants robots = do
+  (width, height) <- get
   let midX = width `div` 2
       midY = height `div` 2
-      nwRobots = length [(pos, vel) | (pos@(Position px py), vel) <- robots, px < midX, py < midY]
-      neRobots = length [(pos, vel) | (pos@(Position px py), vel) <- robots, px > midX, py < midY]
-      swRobots = length [(pos, vel) | (pos@(Position px py), vel) <- robots, px < midX, py > midY]
-      seRobots = length [(pos, vel) | (pos@(Position px py), vel) <- robots, px > midX, py > midY]
-   in nwRobots * neRobots * swRobots * seRobots
+      nw = length [(Position px py, v) | (Position px py, v) <- robots, px < midX, py < midY]
+      ne = length [(Position px py, v) | (Position px py, v) <- robots, px > midX, py < midY]
+      sw = length [(Position px py, v) | (Position px py, v) <- robots, px < midX, py > midY]
+      se = length [(Position px py, v) | (Position px py, v) <- robots, px > midX, py > midY]
+  return $ nw * ne * sw * se
 
--- | Parses a `Robot`'s `Position` and `Velocity` from a single line of text.
+-- | Parse position remains the same
 parsePosition :: Text -> Robot
 parsePosition line =
-  let [pos, vel] = T.splitOn " " line -- Split "p=0,4 v=3,-3" into ["p=0,4", "v=3,-3"]
-      [_, posCoords] = T.splitOn "=" pos -- Split "p=0,4" into ["p", "0,4"]
-      [_, velCoords] = T.splitOn "=" vel -- Split "v=3,-3" into ["v", "3,-3"]
-      [x, y] = T.splitOn "," posCoords -- Split "0,4" into ["0", "4"]
-      [vx, vy] = T.splitOn "," velCoords -- Split "3,-3" into ["3", "-3"]
+  let [pos, vel] = T.splitOn " " line
+      [_, posCoords] = T.splitOn "=" pos
+      [_, velCoords] = T.splitOn "=" vel
+      [x, y] = T.splitOn "," posCoords
+      [vx, vy] = T.splitOn "," velCoords
       x' = read $ T.unpack x
       y' = read $ T.unpack y
       vx' = read $ T.unpack vx
       vy' = read $ T.unpack vy
    in (Position x' y', Position vx' vy')
 
+-- | Main computation in GridState
+computeSafetyFactor :: [Robot] -> Int -> GridState Int
+computeSafetyFactor robots steps = do
+  finalRobots <- simulateSteps steps robots
+  countQuadrants finalRobots
+
 part1 :: IO ()
 part1 = do
   input <- T.lines <$> TIO.readFile "input.txt"
   let robots = map parsePosition input
-  let timeSteps = 100
-  let grid = (101, 103)
-  let final_robots = simulateGrid grid robots timeSteps
-  let n_robots = safetyFactor grid final_robots
-  print n_robots
+      grid = (101, 103)
+      result = runGrid (computeSafetyFactor robots 100) grid
+  print result
 
 main :: IO ()
 main = part1
