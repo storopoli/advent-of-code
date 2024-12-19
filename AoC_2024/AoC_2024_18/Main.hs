@@ -55,5 +55,34 @@ part1 = do
     Nothing -> putStrLn "No path found!"
     Just steps -> putStrLn $ "Minimum steps needed: " ++ show steps
 
+-- Part 2
+
+parseCoord2 :: Text -> String
+parseCoord2 line = case T.splitOn "," line of
+  [x, y] -> T.unpack x ++ "," ++ T.unpack y -- Keep original format for output
+  _ -> error "Invalid input format"
+
+part2 :: IO ()
+part2 = do
+  input <- T.lines <$> TIO.readFile "input.txt"
+  let coords = map parseCoord input
+      maxX = 70
+      maxY = 70
+
+      -- Try each prefix length until we find the blocking coordinate
+      firstBlocking = head $ dropWhile hasPath [1 .. length coords]
+      blockingCoord = coords !! (firstBlocking - 1)
+
+      -- Helper function to check if a path exists with given number of bytes
+      hasPath n =
+        let grid = Set.fromList (take n coords)
+         in case bfs grid maxX maxY (0, 0) (maxX, maxY) of
+              Just _ -> True
+              Nothing -> False
+
+  -- Get the original string format of the blocking coordinate
+  putStrLn $ parseCoord2 (input !! (firstBlocking - 1))
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
