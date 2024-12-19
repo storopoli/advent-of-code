@@ -1,12 +1,13 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
 import Control.Monad
+import Control.Monad.ST
 import Data.Array.ST
 import Data.Array.Unboxed
 import Data.List (sort)
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
@@ -48,5 +49,53 @@ part1 = do
   where
     sortByLength = sortBy (\a b -> compare (T.length b) (T.length a))
 
+-- Part 2
+
+-- Pre-compute pattern matches for each position
+type MatchCache = Array Int [Text]
+
+buildMatchCache :: [Text] -> Text -> MatchCache
+buildMatchCache patterns text =
+  array
+    (0, T.length text)
+    [ ( i,
+        [ p | p <- patterns, T.length p <= T.length rest, T.isPrefixOf p rest
+        ]
+      )
+      | i <- [0 .. T.length text],
+        let rest = T.drop i text
+    ]
+
+countWays2 :: [Text] -> Text -> Integer
+countWays2 patterns design =
+  let cache = buildMatchCache patterns design
+      memo = runST $ do
+        arr <- newArray (0, T.length design) 0 :: ST s (STArray s Int Integer)
+        -- Base case: empty string can be made in 1 way
+        writeArray arr (T.length design) 1
+        -- Fill array from right to left
+        forM_ [T.length design - 1, T.length design - 2 .. 0] $ \pos -> do
+          let matches = cache ! pos
+          total <- sum <$> mapM (\p -> readArray arr (pos + T.length p)) matches
+          writeArray arr pos total
+        arr' <- freeze arr
+        return (arr' :: Array Int Integer)
+   in memo ! 0
+
+part2 :: IO ()
+part2 = do
+  input <- TIO.readFile "input.txt"
+  let (patterns, designs) = parseInput input
+  let sortedPatterns = sortByLength patterns
+
+  let totalWays =
+        sum $
+          map (countWays2 sortedPatterns) $
+            filter (isPossible sortedPatterns) designs
+  putStrLn $ "Part 2 - Total number of ways: " ++ show totalWays
+  where
+    sortByLength = sortBy (\a b -> compare (T.length b) (T.length a))
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
