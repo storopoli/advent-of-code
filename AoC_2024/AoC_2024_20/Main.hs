@@ -89,5 +89,55 @@ part1 = do
     "Number of cheats saving ≥100 picoseconds: "
       ++ show (sum [count | (_, count) <- validCheats])
 
+-- Part 2: Find extended cheats
+type DistMap = M.Map Pos Int
+
+findCheatPaths2 :: Grid -> Pos -> Pos -> Int -> [(Int, Int)]
+findCheatPaths2 grid start end normalTime = do
+  let fromStart = findDistances grid start -- Regular distances from start
+  let fromEnd = findDistances grid end -- Regular distances from end
+
+  -- Find all pairs of points that could be connected by a cheat sequence
+  let cheatPaths = do
+        pos1 <- M.keys fromStart
+        pos2 <- M.keys fromEnd
+        let dist1 = fromStart M.! pos1 -- Distance from start to pos1
+        let dist2 = fromEnd M.! pos2 -- Distance from pos2 to end
+
+        -- Check if points can be connected with ≤20 steps
+        let manhattanDist = abs (fst pos1 - fst pos2) + abs (snd pos1 - snd pos2)
+        guard $ manhattanDist <= 20
+
+        -- Calculate total path length and time saved
+        let totalDist = dist1 + manhattanDist + dist2
+        let saved = normalTime - totalDist
+        guard $ saved >= 2
+
+        return (saved, 1)
+
+  M.toList $ M.fromListWith (+) cheatPaths
+  where
+    guard True = [()]
+    guard False = []
+
+    -- Helper to check if two points can be connected within steps
+    canConnect :: Pos -> Pos -> Int -> Bool
+    canConnect p1 p2 steps =
+      abs (fst p1 - fst p2) + abs (snd p1 - snd p2) <= steps
+
+part2 :: IO ()
+part2 = do
+  input <- TIO.readFile "input.txt"
+  let (grid, start, end) = parseInput input
+  let normalTime = findDistances grid start M.! end
+  putStrLn $ "Normal path length: " ++ show normalTime
+
+  let cheats = findCheatPaths2 grid start end normalTime
+  let validCheats = filter ((>= 100) . fst) cheats
+  putStrLn $
+    "Number of cheats saving ≥100 picoseconds: "
+      ++ show (sum [count | (_, count) <- validCheats])
+
 main :: IO ()
-main = part1
+-- main = part1
+main = part2
