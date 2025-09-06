@@ -1,0 +1,60 @@
+cabal-version:     3.4
+name:              aoc2024
+version:           0.1.0.0
+license:           MIT
+author:            Jose Storopoli
+maintainer:        jose@storopoli.com
+build-type:        Simple
+
+common warnings
+    ghc-options: -Wall
+
+executable aoc2024
+    import:           warnings
+    main-is:          Main.hs
+    default-extensions:
+        , OverloadedStrings
+        , ImportQualifiedPost
+    other-modules:
+        , Util
+        , Day01
+        , Day02
+        , Day03
+        , Day04
+        , Day05
+        , Day06
+        , Day07
+        , Day08
+        , Day09
+        , Day10
+        , Day11
+        , Day12
+        , Day13
+        , Day14
+        , Day15
+        , Day16
+        , Day17
+        , Day18
+        , Day19
+        , Day20
+        , Day21
+        , Day22
+        , Day23
+        , Day24
+        , Day25
+    build-depends:
+        , base
+        , optparse-applicative
+        , text
+        , array
+        , containers
+        , regex-tdfa
+        , mtl
+        , primitive
+        , vector
+    hs-source-dirs:   app
+    default-language: Haskell2010
+    ghc-options:
+        -O2
+        -threaded
+        -rtsopts

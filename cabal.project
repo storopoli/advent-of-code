@@ -1,0 +1,12 @@
+packages:
+  2024/
+
+-- Global configuration
+optimization: 2
+documentation: False
+tests: False
+benchmarks: False
+
+-- GHC options applied to all packages
+package *
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints

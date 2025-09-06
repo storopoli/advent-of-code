@@ -1,4 +1,4 @@
-### Haskell ###
+# Haskell
 dist
 dist-*
 cabal-dev
@@ -23,8 +23,16 @@ cabal.project.local~
 .HTF/
 .ghc.environment.*
 
-### AoC ###
-**/expected.txt
-**/test_input.txt
-**/input.txt
-**/Main
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Nix
+result
+result-*
